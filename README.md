@@ -26,6 +26,19 @@ In the DATA DIVISION there are the following vars:
 - *n_epochs* How many loops the training will take
 - *input_size* How many nodes at the Input Layer
 - *hidden_size* How many nodes at the Hidden Layer
-- *output_size* How many nodes at the Hidden Layer
+- *output_size* How many nodes at the Output Layer
 
+### Change training data
 
+In the paragraph named **insert_training_data**, add values to the tables *inputs* and *outputs*:
+
+```cobol
+    *> [0.0, 1.0]] [1.0]]
+    MOVE 0 TO inputs(1, 1).
+    MOVE 1 TO inputs(1, 2).
+    MOVE 1 TO outputs(1, 1).
+    *> [1.0, 1.0]] [0.0]]
+    MOVE 1 TO inputs(2, 1).
+    MOVE 1 TO inputs(2, 2).
+    MOVE 0 TO outputs(2, 1).
+```
