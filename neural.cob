@@ -4,7 +4,7 @@
             AUTHOR. Gustavo Selbach Teixeira.
             DATE-WRITTEN. 2021-10-02.
             *> A simple feed forward neural network in Cobol
-            *>   This logistical function can be configurable
+            *>   The logistical function can be configurable
             *>   using a "Leaky Relu" or "Sigmoid" function.
             DATA DIVISION.
                 WORKING-STORAGE SECTION.
@@ -13,9 +13,9 @@
                     01 RELU_FUN CONSTANT as 2.
 
                     *> Set the parameters here - You can touch here.
-                    01 n_epochs CONSTANT as 800.
+                    01 n_epochs CONSTANT as 10000.
                     01 input_size CONSTANT as 2.
-                    01 hidden_size CONSTANT as 6.
+                    01 hidden_size CONSTANT as 4.
                     01 output_size CONSTANT as 1.
                     01 learning_rate USAGE IS COMP-2 VALUE 0.1.
                     *> Set the logistical function: SIGMOID_FUN or RELU_FUN
@@ -70,6 +70,7 @@
  
             PROCEDURE DIVISION.
                 PERFORM initialize_network.
+                *> Do the NN main loop
                 PERFORM VARYING n FROM 1 BY 1 UNTIL n > n_epochs
                     *> If true, randomize input array.
                     *> Improves accuracy but impacts performance.
