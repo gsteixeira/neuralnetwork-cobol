@@ -2,15 +2,29 @@
         IDENTIFICATION DIVISION.
             PROGRAM-ID. NeuralNetwork.
             AUTHOR. Gustavo Selbach Teixeira.
+            DATE-WRITTEN. 2021-10-02.
             *> A simple feed forward neural network in Cobol
+            *>   This logistical function can be configurable
+            *>   using a "Leaky Relu" or "Sigmoid" function.
             DATA DIVISION.
                 WORKING-STORAGE SECTION.
-                    *> parameters
-                    01 n_epochs CONSTANT as 10000.
+                    *> Logistical function definition - Dont touch this,
+                    01 SIGMOID_FUN CONSTANT as 1.
+                    01 RELU_FUN CONSTANT as 2.
+
+                    *> Set the parameters here - You can touch here.
+                    01 n_epochs CONSTANT as 800.
                     01 input_size CONSTANT as 2.
                     01 hidden_size CONSTANT as 6.
                     01 output_size CONSTANT as 1.
                     01 learning_rate USAGE IS COMP-2 VALUE 0.1.
+                    *> Set the logistical function: SIGMOID_FUN or RELU_FUN
+                    01 conf_log_function CONSTANT as RELU_FUN.
+                    *> Set if should randomize input.
+                    *> Severely impacts performance, but improves training speed.
+                    01 conf_randomize_input CONSTANT as 0.
+                    *> End Parameters. All the rest your not supposed to touch.
+
                     *> identifiers CONSTANTS
                     01 input_layer USAGE IS INDEX VALUE 1.
                     01 hidden_layer USAGE IS INDEX VALUE 2.
@@ -25,11 +39,13 @@
                     01 target_layer USAGE IS INDEX VALUE 0.
                     01 training_idx USAGE IS INDEX VALUE 0.
                     01 training_seq USAGE IS INDEX VALUE 0.
+                    01 show_result  PIC 9V99 DISPLAY VALUE ZERO.
                     *> math
                     01 activation   USAGE IS COMP-2.
                     01 errors       USAGE IS COMP-2.
-                    01 sigmoid      USAGE IS COMP-2.
+                    01 logistical   USAGE IS COMP-2.
                     01 aux          USAGE IS COMP-2.
+                    01 aux2         USAGE IS COMP-2.
                     *> date and seed
                     01 datetime     PIC X(21).
                     01 seed         PIC S9(9) BINARY.
@@ -55,9 +71,13 @@
             PROCEDURE DIVISION.
                 PERFORM initialize_network.
                 PERFORM VARYING n FROM 1 BY 1 UNTIL n > n_epochs
-                    *>PERFORM shuffle_array *> disabled due poor performance
+                    *> If true, randomize input array.
+                    *> Improves accuracy but impacts performance.
+                    IF conf_randomize_input = 1 THEN
+                        PERFORM shuffle_array
+                    END-IF
                     PERFORM VARYING training_seq FROM 1 BY 1
-                                                UNTIL training_seq > 4                  
+                                                UNTIL training_seq > 4
                         MOVE training_sequence(training_seq)
                                                 TO training_idx
                         PERFORM set_intput
@@ -76,10 +96,11 @@
                 MOVE hidden_layer TO source_layer.
                 MOVE output_layer TO target_layer.
                 PERFORM activation_function.
+                MOVE valuess(output_layer, 1) TO show_result.
                 DISPLAY n " Input: ["valuess(input_layer, 1)
                         ", "valuess(input_layer, 2)
                         "] Expected: " outputs(training_idx, 1)
-                        " Output: " valuess(output_layer, 1)
+                        " Output: " show_result " - " valuess(output_layer, 1)
                         END-DISPLAY.
                 *> output delta
                 PERFORM calc_output_delta.
@@ -101,7 +122,6 @@
             set_intput.
                 PERFORM VARYING i FROM 1 BY 1 UNTIL i > n_nodes(input_layer)
                     MOVE inputs(training_idx, i) TO valuess(input_layer, i)
-                    *> DISPLAY valuess(input_layer, i) " i " i
                 END-PERFORM.
                 EXIT.
 
@@ -115,19 +135,31 @@
                                         valuess(source_layer, i) 
                                         * weights(target_layer, i, j))
                     END-PERFORM
-                    PERFORM sigmoid_function
-                    MOVE sigmoid TO valuess(target_layer, j)
+                    *> logistical function. See: conf_log_function
+                    EVALUATE conf_log_function
+                        WHEN RELU_FUN
+                            PERFORM relu_function
+                        WHEN SIGMOID_FUN
+                            PERFORM sigmoid_function
+                    END-EVALUATE
+                    MOVE logistical TO valuess(target_layer, j)
                 END-PERFORM.
                 EXIT.
 
             *> compute the delta for the output layer
             calc_output_delta.
                 PERFORM VARYING i FROM 1 BY 1 UNTIL i > n_nodes(output_layer)
-                    COMPUTE errors = (outputs(training_idx, i) 
+                    COMPUTE errors = (outputs(training_idx, i)
                                         - valuess(output_layer, i))
-                    MOVE valuess(output_layer, i) TO aux
-                    PERFORM d_sigmoid_function
-                    COMPUTE deltas(output_layer, i) = errors * sigmoid
+                    *> logistical function. See: conf_log_function
+                    EVALUATE conf_log_function
+                        WHEN RELU_FUN
+                            MOVE errors TO deltas(output_layer, i)
+                        WHEN SIGMOID_FUN
+                            MOVE valuess(output_layer, i) TO aux
+                            PERFORM d_sigmoid_function
+                            COMPUTE deltas(output_layer, i) = errors * logistical
+                    END-EVALUATE
                 END-PERFORM.
                 EXIT.
             
@@ -136,26 +168,33 @@
                 PERFORM VARYING j FROM 1 BY 1 UNTIL j > n_nodes(target_layer)
                     MOVE 0 TO errors
                     PERFORM VARYING i FROM 1 BY 1 UNTIL i > n_nodes(source_layer)
-                        COMPUTE aux = (deltas(source_layer, i) 
-                                        * weights(source_layer, j, i))
-                        ADD aux TO errors
+                        COMPUTE errors = (errors + deltas(source_layer, i) 
+                                          * weights(source_layer, j, i))
                     END-PERFORM
-                    MOVE valuess(target_layer, j) TO aux
-                    PERFORM d_sigmoid_function
-                    COMPUTE deltas(target_layer, j) = (errors * sigmoid)
+                    *> logistical function. See: conf_log_function
+                    EVALUATE conf_log_function
+                        WHEN RELU_FUN
+                            COMPUTE deltas(target_layer, j) = (errors
+                                            * valuess(target_layer, j))
+                        WHEN SIGMOID_FUN
+                            MOVE valuess(target_layer, j) TO aux
+                            PERFORM d_sigmoid_function
+                            COMPUTE deltas(target_layer, j) = (
+                                            errors * logistical)
+                    END-EVALUATE
                 END-PERFORM.
                 EXIT.
 
             *> update connection's weights
             update_weights.
                 PERFORM VARYING j FROM 1 BY 1 UNTIL j > n_nodes(source_layer)
-                    COMPUTE aux = (deltas(source_layer, j) * learning_rate)
-                    ADD aux TO bias(source_layer, j)
+                    COMPUTE bias(source_layer, j) = (bias(source_layer, j)
+                                + (deltas(source_layer, j) * learning_rate))
                     PERFORM VARYING i FROM 1 BY 1 UNTIL i > n_nodes(target_layer)
-                        COMPUTE aux = (valuess(target_layer, i) 
-                                        * deltas(source_layer, j) 
-                                        * learning_rate)
-                        ADD aux TO weights(source_layer, i, j)
+                        COMPUTE weights(source_layer, i, j) = (
+                            (weights(source_layer, i, j)
+                            + (valuess(target_layer, i)
+                               * deltas(source_layer, j) * learning_rate)))
                     END-PERFORM
                 END-PERFORM.
                 EXIT.
@@ -188,6 +227,7 @@
                         END-PERFORM
                     END-PERFORM
                 END-PERFORM.
+                *> training sequence
                 PERFORM VARYING i FROM 1 BY 1 UNTIL i > 4
                     MOVE i TO training_sequence(i)
                 END-PERFORM.
@@ -217,12 +257,33 @@
 
             *> logistical function, takes "activation" as parameter
             sigmoid_function.
-                COMPUTE sigmoid = 1 / (1 + FUNCTION EXP(-activation))
+                COMPUTE logistical = 1 / (1 + FUNCTION EXP(-activation))
                 EXIT.
 
-            *> takes "aux" as parameter, returns "sigmoid"
+            *> takes "aux" as parameter, returns "logistical"
             d_sigmoid_function.
-                COMPUTE sigmoid = aux * (1 - aux)
+                COMPUTE logistical = aux * (1 - aux)
+                EXIT.
+
+            *> the (leaky) Rectified Linear Unit function
+            relu_function.
+                IF activation > 0 THEN
+                    MOVE activation TO logistical
+                ELSE
+                    *> This makes a Leaky Relu
+                    COMPUTE logistical = 0.01 * activation
+                    *> this is relu (not leaky)
+                    *> MOVE 0 TO logistical
+                END-IF.
+                EXIT.
+
+            *> The derivative of ReLU
+            d_relu_function.
+                IF aux >= 0 THEN
+                    MOVE 1 TO logistical
+                ELSE
+                    MOVE 0 TO logistical
+                END-IF.
                 EXIT.
 
             *> randomly shuffles the array (slow)
