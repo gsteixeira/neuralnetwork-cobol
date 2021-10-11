@@ -1,10 +1,16 @@
 # A Neural Network in Cobol
 
-A feed forward neural network in Cobol :)
+A deep neural network in Cobol :)
+
+## Features:
+
+- Support for multiple hidden layers. Thus Deep Neural Networks.
+- Configurable non linear function. Supports: **sigmoid**, **leaky relu**
+- Built in pure Cobol.
 
 With configurable logistical function, you can use *sigmoid* or *leaky relu*.
 
-By using relu, and randomizing input, a 100% accuracy can be achieved by as few as 500 epochs!
+By using relu, and randomizing input, a 99% accuracy can be achieved by as few as 500 epochs!
 
 ## usage:
 
@@ -21,27 +27,34 @@ Compile and run.
 
 ### Set the network parameters
 
-In the DATA DIVISION there are the following vars:
+In the DATA DIVISION there are the following vars you can tune:
 
 ```cobol
-    01 n_epochs CONSTANT as 10000.
-    01 input_size CONSTANT as 2.
-    01 hidden_size CONSTANT as 6.
-    01 output_size CONSTANT as 1.
-    01 learning_rate USAGE IS COMP-2 VALUE 0.1.
-    *> Set the logistical function: SIGMOID_FUN or RELU_FUN
-    01 conf_log_function CONSTANT as RELU_FUN.
-    *> Set if should randomize input.
-    *> Severely impacts performance, but improves training speed.
-    01 conf_randomize_input CONSTANT as 0.
+    01 n_epochs                 CONSTANT as 10000.
+    01 input_size               CONSTANT as 2.
+    01 hidden_size              CONSTANT as 4.
+    01 output_size              CONSTANT as 1.
+    01 n_hidden_layers          CONSTANT as 1.
+    01 conf_log_function        CONSTANT as "leaky_relu".
+    01 conf_randomize_input     CONSTANT as 0.
+    01 training_size            CONSTANT as 4.
+    01 learning_rate PIC S9V9(7) COMP-3 SYNC VALUE 0.1.
+    01 n_layers                 CONSTANT as 9.
+    01 weights_matrix_size      CONSTANT as 128.
 ```
 
-- *n_epochs* How many loops the training will take
-- *input_size* How many nodes at the Input Layer
-- *hidden_size* How many nodes at the Hidden Layer
-- *output_size* How many nodes at the Output Layer
-- *conf_log_function* The logistical function. Can be: RELU_FUN or SIGMOID_FUN.
+- *n_epochs* How many loops the training will take.
+- *input_size* How many nodes at the Input Layer.
+- *hidden_size* How many nodes at the Hidden Layer.
+- *output_size* How many nodes at the Output Layer.
+- *n_hidden_layers* How many hidden layers the NN will have.
+- *conf_log_function* The logistical function. Can be: "leaky_relu" or "sigmoid"
+- *learning_rate* The rate of learning for the NN.
 - *conf_randomize_input* If should randomize input. Severely impacts performance but improves training speed.
+- *training_size* How much data (array size of) there is on the training input array.
+- *n_layers* How many layers in total. Must be n_hidden_layers + 2. Or use a large number.
+- *weights_matrix_size* The largest weights matrix size. The largest layer * it's previous. Or just use a large number.
+
 
 ### Change training data
 
